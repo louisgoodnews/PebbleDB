@@ -1,6 +1,3 @@
 [submodule "thirdparty/Logger"]
 	path = thirdparty/Logger
 	url = https://github.com/louisgoodnews/Logger.git
-[submodule "thirdparty/DataUtils"]
-	path = thirdparty/DataUtils
-	url = https://github.com/louisgoodnews/DataUtils
