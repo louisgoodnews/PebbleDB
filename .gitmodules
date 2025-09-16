@@ -4,3 +4,6 @@
 [submodule "thirdparty/DataUtils"]
 	path = thirdparty/DataUtils
 	url = https://github.com/louisgoodnews/DataUtils
+[submodule "thirdparty/TaskScheduler"]
+	path = thirdparty/TaskScheduler
+	url = https://github.com/louisgoodnews/TaskScheduler
