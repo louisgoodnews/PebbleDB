@@ -10,20 +10,25 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Final, Iterable, Iterator, Optional, Self
 
-from core.constants import CWD
-from core.utils import PebbleCommitService
+from core.constants import CWD, PEBBLE_COMMIT_SERVICE
+from core.files import read_file_if_not_exists
+from core.table import PebbleTable, PebbleTableBuilder
 
+from utils.utils import run_async
+
+from datautils import DataConversionUtils
 from logger import Logger
 
 
 __all__: Final[list[str]] = [
-    "PebbleTable",
-    "PebbleTableFactory",
-    "PebbleTableBuilder",
+    "PebbleDatabase",
+    "PebbleDatabaseFactory",
+    "PebbleDatabaseBuilder",
+    "PebbleDatabaseLoader",
 ]
 
 
-class PebbleTable:
+class PebbleDatabase:
     """
     A class that represents a table in a database.
     """
@@ -35,20 +40,18 @@ class PebbleTable:
         name: str,
         path: Path,
         created_at: Optional[datetime] = None,
-        database: str = "",
         updated_at: Optional[datetime] = None,
     ) -> None:
         """
-        Initialize the PebbleTable instance with the passed data dictionary, identifier string, and name string.
+        Initialize the PebbleDatabase instance with the passed data dictionary, identifier string, and name string.
 
         Args:
-            created_at (Optional[datetime]): The created at datetime to be stored in the PebbleTable instance.
-            database (str): The database string to be stored in the PebbleTable instance.
-            data (dict[str, Any]): The data dictionary to be stored in the PebbleTable instance.
-            identifier (str): The identifier string to be stored in the PebbleTable instance.
-            name (str): The name string to be stored in the PebbleTable instance.
-            path (Path): The path to the PebbleTable instance.
-            updated_at (Optional[datetime]): The updated at datetime to be stored in the PebbleTable instance.
+            created_at (Optional[datetime]): The created at datetime to be stored in the PebbleDatabase instance.
+            data (dict[str, Any]): The data dictionary to be stored in the PebbleDatabase instance.
+            identifier (str): The identifier string to be stored in the PebbleDatabase instance.
+            name (str): The name string to be stored in the PebbleDatabase instance.
+            path (Path): The path to the PebbleDatabase instance.
+            updated_at (Optional[datetime]): The updated at datetime to be stored in the PebbleDatabase instance.
 
         Returns:
             None
@@ -62,9 +65,6 @@ class PebbleTable:
         # Set the '_created_at' date to the passed value or now
         self._created_at: Final[datetime] = created_at
 
-        # Store the passed database string in a final instance variable
-        self._database: str = database
-
         # Store the passed data dictionary in a final instance variable
         self._data: Final[dict[str, Any]] = data
 
@@ -72,7 +72,7 @@ class PebbleTable:
         self._identifier: Final[str] = identifier
 
         # Initialize the Logger instance
-        self._logger: Final[Logger] = Logger(name=self.__class__.__name__)
+        self._logger: Logger = Logger(name=self.__class__.__name__)
 
         # Store the passed name string in a final instance variable
         self._name: Final[str] = name
@@ -81,7 +81,7 @@ class PebbleTable:
         self._path: Final[Path] = path
 
         # Set the '_updated_at' date to the passed value or now
-        self._updated_at: datetime = datetime.now()
+        self._updated_at: datetime = updated_at or datetime.now()
 
     def __contains__(
         self,
@@ -102,22 +102,22 @@ class PebbleTable:
 
     def __eq__(
         self,
-        other: "PebbleTable",
+        other: "PebbleDatabase",
     ) -> bool:
         """
-        Check if the passed other object is not a PebbleTable instance
+        Check if the passed other object is not a PebbleDatabase instance
 
         Args:
-            other (PebbleTable): The other object to be compared.
+            other (PebbleDatabase): The other object to be compared.
 
         Returns:
-            bool: True if the passed other object is a PebbleTable instance and its identifier is identical to this instance's identifier, False otherwise.
+            bool: True if the passed other object is a PebbleDatabase instance and its identifier is identical to this instance's identifier, False otherwise.
         """
 
-        # Check if the passed other object is not a PebbleTable instance
+        # Check if the passed other object is not a PebbleDatabase instance
         if not isinstance(
             other,
-            PebbleTable,
+            PebbleDatabase,
         ):
             # Return False as a comparison between non-identical classes is not supported
             return False
@@ -171,14 +171,14 @@ class PebbleTable:
 
     def __repr__(self) -> str:
         """
-        Return a string representation of this PebbleTable instance.
+        Return a string representation of this PebbleDatabase instance.
 
         Returns:
-            str: A string representation of this PebbleTable instance.
+            str: A string representation of this PebbleDatabase instance.
         """
 
-        # Return a string representation of this PebbleTable instance
-        return f"<{self.__class__.__name__}(created_at={self.created_at.isoformat()}, database={self.database}, entries={self.total}, identifier={self.identifier}, name={self.name}, path={self.path}, updated_at={self.updated_at.isoformat()})>"
+        # Return a string representation of this PebbleDatabase instance
+        return f"<{self.__class__.__name__}(entries={self.total}, identifier={self.identifier}, name={self.name}, path={self.path})>"
 
     def __setitem__(
         self,
@@ -213,49 +213,14 @@ class PebbleTable:
     @property
     def created_at(self) -> datetime:
         """
-        Return the created at datetime of the PebbleTable instance to the caller.
+        Return the created at datetime of the PebbleDatabase instance to the caller.
 
         Returns:
-            datetime: The created at datetime of the PebbleTable instance to the caller.
+            datetime: The created at datetime of the PebbleDatabase instance to the caller.
         """
 
-        # Return the created at datetime of the PebbleTable instance to the caller
+        # Return the created at datetime of the PebbleDatabase instance to the caller
         return self._created_at
-
-    @property
-    def database(self) -> str:
-        """
-        Return the database of the PebbleTable instance to the caller.
-
-        Returns:
-            str: The database of the PebbleTable instance to the caller.
-        """
-
-        # Return the database of the PebbleTable instance to the caller
-        return self._database
-
-    @database.setter
-    def database(
-        self,
-        value: str,
-    ) -> None:
-        """
-        Update the database of the PebbleTable instance with the passed value.
-
-        Args:
-            value (str): The value to be associated with the passed key.
-
-        Returns:
-            None
-        """
-
-        # Check if the passed value is an empty string
-        if value == "":
-            # Return None as an empty string is not a valid value
-            return
-
-        # Update the database of the PebbleTable instance with the passed value
-        self._database = value
 
     @property
     def entries(self) -> dict[str, Any]:
@@ -277,37 +242,37 @@ class PebbleTable:
     @property
     def identifier(self) -> str:
         """
-        Return the identifier of the PebbleTable instance to the caller.
+        Return the identifier of the PebbleDatabase instance to the caller.
 
         Returns:
-            str: The identifier of the PebbleTable instance to the caller.
+            str: The identifier of the PebbleDatabase instance to the caller.
         """
 
-        # Return the identifier of the PebbleTable instance to the caller
+        # Return the identifier of the PebbleDatabase instance to the caller
         return self._identifier
 
     @property
     def name(self) -> str:
         """
-        Return the name of the PebbleTable instance to the caller.
+        Return the name of the PebbleDatabase instance to the caller.
 
         Returns:
-            str: The name of the PebbleTable instance to the caller.
+            str: The name of the PebbleDatabase instance to the caller.
         """
 
-        # Return the name of the PebbleTable instance to the caller
+        # Return the name of the PebbleDatabase instance to the caller
         return self._name
 
     @property
     def path(self) -> Path:
         """
-        Return the path of the PebbleTable instance to the caller.
+        Return the path of the PebbleDatabase instance to the caller.
 
         Returns:
-            Path: The path of the PebbleTable instance to the caller.
+            Path: The path of the PebbleDatabase instance to the caller.
         """
 
-        # Return the path of the PebbleTable instance to the caller
+        # Return the path of the PebbleDatabase instance to the caller
         return self._path
 
     @property
@@ -325,7 +290,7 @@ class PebbleTable:
             self._data["total"] = 0
 
         # Return the total count to the caller
-        return self._data["total"]
+        return int(self._data["total"])
 
     @total.setter
     def total(
@@ -352,13 +317,13 @@ class PebbleTable:
     @property
     def updated_at(self) -> datetime:
         """
-        Return the updated at datetime of the PebbleTable instance to the caller.
+        Return the updated at datetime of the PebbleDatabase instance to the caller.
 
         Returns:
-            datetime: The updated at datetime of the PebbleTable instance to the caller.
+            datetime: The updated at datetime of the PebbleDatabase instance to the caller.
         """
 
-        # Return the updated at datetime of the PebbleTable instance to the caller
+        # Return the updated at datetime of the PebbleDatabase instance to the caller
         return self._updated_at
 
     @updated_at.setter
@@ -367,7 +332,7 @@ class PebbleTable:
         value: datetime,
     ) -> None:
         """
-        Update the updated at datetime of the PebbleTable instance with the passed value.
+        Update the updated at datetime of the PebbleDatabase instance with the passed value.
 
         Args:
             value (datetime): The value to be associated with the passed key.
@@ -376,43 +341,10 @@ class PebbleTable:
             None
         """
 
-        # Update the updated at datetime of the PebbleTable instance with the passed value
+        # Update the updated at datetime of the PebbleDatabase instance with the passed value
         self._updated_at = value
 
-    def all(self) -> list[dict[str, Any]]:
-        """
-        Return a list of the values contained in this PebbleTable instance.
-
-        Returns:
-            list[dict[str, Any]]: A list of the values contained in this PebbleTable instance.
-        """
-
-        # Return a list of the values contained in this PebbleTable instance
-        return list(self.entries.values())
-
-    def commit(self) -> None:
-        """
-        Commit the changes to the table.
-
-        Returns:
-            None
-        """
-
-        # Attempt to commit the table to a file
-        PebbleCommitService.commit(database_or_table=self.to_dict())
-
-    def empty(self) -> bool:
-        """
-        Return True if the PebbleTable instance is empty otherwise False.
-
-        Returns:
-            bool: True if the PebbleTable instance is empty otherwise False.
-        """
-
-        # Return True if the PebbleTable instance is empty otherwise False
-        return self.total == 0
-
-    def get(
+    def _get(
         self,
         identifier: str,
     ) -> Any:
@@ -427,11 +359,16 @@ class PebbleTable:
             Any: The value associated with the passed key.
         """
 
+        # Check if 'values' exists in the data dictionary instance variable
+        if "values" not in self._data:
+            # Initialize the 'values' dictionary to an empty dictionary
+            self._data["values"] = {}
+
         # Return the value associated with the passed key.
         # Will raise a KeyError exception is the key does not exist
         return self._data["values"][identifier]
 
-    def get_in_bulk(
+    def _get_in_bulk(
         self,
         identifiers: list[str],
     ) -> list[Any]:
@@ -444,9 +381,6 @@ class PebbleTable:
 
         Returns:
             list[Any]: The values associated with the passed identifiers.
-
-        Raises:
-            KeyError: If getting any of the values associated with the passed identifiers failed.
         """
 
         # Initialize the result to an empty list
@@ -454,6 +388,11 @@ class PebbleTable:
 
         # Initialize the errors list to an empty list
         errors: list[KeyError] = []
+
+        # Check if 'values' exists in the data dictionary instance variable
+        if "values" not in self._data:
+            # Initialize the 'values' dictionary to an empty dictionary
+            self._data["values"] = {}
 
         # Iterate over the passed idenfifiers
         for identifier in identifiers:
@@ -472,7 +411,7 @@ class PebbleTable:
         # Return the result list to the caller
         return result
 
-    def insert(
+    def _insert(
         self,
         entry: dict[str, Any],
         is_bulk_operation: bool = False,
@@ -497,6 +436,11 @@ class PebbleTable:
         # Set the '_added_at' date to now
         entry["_added_at"] = timestamp.isoformat()
 
+        # Check if 'values' exists in the data dictionary instance variable
+        if "values" not in self._data:
+            # Initialize the 'values' dictionary to an empty dictionary
+            self._data["values"] = {}
+
         # Add the passed entry dictionary to the data dictionary instance variable
         self._data["values"][identifier] = entry
 
@@ -505,13 +449,13 @@ class PebbleTable:
 
         # Check if the operation is not a bulk operation
         if not is_bulk_operation:
-            # Update the updated at datetime of the PebbleTable instance with the passed value
+            # Update the updated at datetime of the PebbleDatabase instance with the passed value
             self.updated_at = timestamp
 
         # Return the identifier converted to an integer
         return int(identifier)
 
-    def insert_in_bulk(
+    def _insert_in_bulk(
         self,
         entries: list[dict[str, Any]],
     ) -> list[int]:
@@ -534,40 +478,205 @@ class PebbleTable:
         # Iterate over the passed entries
         for entry in entries:
             # Insert the current entry into the data dictionary instance variable
-            result.append(
-                self.insert(
-                    entry=entry,
-                    is_bulk_operation=True,
-                    timestamp=timestamp,
-                )
-            )
+            result.append(self._insert(entry=entry, is_bulk_operation=True, timestamp=timestamp))
 
-        # Update the updated at datetime of the PebbleTable instance with the passed value
+        # Update the updated at datetime of the PebbleDatabase instance with the passed value
         self.updated_at = timestamp
 
         # Return the result list to the caller
         return result
 
-    def items(self) -> ItemsView[Any]:
+    def add_table(
+        self,
+        table: PebbleTable,
+    ) -> int:
         """
-        Return the items of the PebbleTable's entries.
+        Add the passed table to the database.
+
+        Args:
+            table (PebbleTable): The table to be added.
 
         Returns:
-            ItemsView[Any]: The items of the PebbleTable's entries.
+            int: The identifier of the added table.
         """
 
-        # Return the items of the PebbleTable's entries
+        # Insert the table data into the data dictionary instance variable and return the entry's ID
+        return self._insert(
+            entry={
+                "identifier": table.identifier,
+                "name": table.name,
+                "path": table.path,
+            }
+        )
+
+    def add_tables(
+        self,
+        tables: list[PebbleTable],
+    ) -> list[int]:
+        """
+        Add the passed tables to the database.
+
+        Args:
+            tables (list[PebbleTable]): The tables to be added.
+
+        Returns:
+            list[int]: The identifiers of the added tables.
+        """
+
+        # Get the current timestamp
+        timestamp: str = DateUtil.now().isoformat()
+
+        # Insert the table data into the data dictionary instance variable and return the entry's IDs
+        return self._insert_in_bulk(
+            entries=[
+                {
+                    "added_at": timestamp,
+                    "identifier": table.identifier,
+                    "name": table.name,
+                    "path": table.path,
+                }
+                for table in tables
+            ]
+        )
+
+    def all(self) -> list[dict[str, Any]]:
+        """
+        Return a list of the values contained in this PebbleDatabase instance.
+
+        Returns:
+            list[dict[str, Any]]: A list of the values contained in this PebbleDatabase instance.
+        """
+
+        # Return a list of the values contained in this PebbleDatabase instance
+        return list(self.entries.values())
+
+    def commit(self) -> None:
+        """
+        Commit the changes to the database.
+
+        Returns:
+            None
+        """
+
+        # Attempt to commit the database to a file
+        PEBBLE_COMMIT_SERVICE.commit(database_or_table=self.to_dict())
+
+    def create_table(
+        self,
+        data: dict[str, Any],
+        name: str,
+        identifier: Optional[str] = None,
+        path: Optional[Path] = None,
+    ) -> PebbleTable:
+        """
+        Create a new PebbleTable instance with the passed data dictionary, name string, and identifier string.
+
+        This method will create a new PebbleTable instance and add it to the database.
+
+        Args:
+            data (dict[str, Any]): The data dictionary to be stored in the PebbleTable instance.
+            identifier (Optional[str], optional): The identifier string to be stored in the PebbleTable instance. Defaults to None.
+            name (str): The name string to be stored in the PebbleTable instance.
+            path (Optional[Path], optional): The path to the PebbleTable instance. Defaults to None.
+
+        Returns:
+            PebbleTable: The newly created PebbleTable instance.
+        """
+
+        # Check if the passed identifier is None
+        if identifier is None:
+            # Update the identifier with a newly generated UUID
+            identifier = uuid.uuid4().hex
+
+        # Check if the passed identifier is None
+        if path is None:
+            # Update the identifier with a newly generated UUID
+            path = CWD
+
+        # Return the newly created PebbleTable instance to the caller
+        table: PebbleTable = (
+            PebbleTableBuilder()
+            .with_data(value=data)
+            .with_identifier(value=identifier)
+            .with_name(value=name)
+            .with_path(value=path)
+            .build()
+        )
+
+        # Add the table to the database
+        self.add_table(table=table)
+
+        # Return the newly created PebbleTable instance to the caller
+        return table
+
+    def empty(self) -> bool:
+        """
+        Return True if the PebbleDatabase instance is empty otherwise False.
+
+        Returns:
+            bool: True if the PebbleDatabase instance is empty otherwise False.
+        """
+
+        # Return True if the PebbleDatabase instance is empty otherwise False
+        return self.total == 0
+
+    def get_table(
+        self,
+        identifier: int,
+    ) -> PebbleTable:
+        """
+        Get the table associated with the passed identifier.
+
+        Args:
+            identifier (int): The identifier of the table to be fetched.
+
+        Returns:
+            PebbleTable: The table associated with the passed identifier.
+        """
+
+        # Attempt to fetch the data associated with the passed identifier and return it as a PebbleTable object
+        return PebbleTableFactory.create(**self._get(identifier=identifier))
+
+    def get_tables(
+        self,
+        identifiers: list[int],
+    ) -> list[PebbleTable]:
+        """
+        Get the tables associated with the passed identifiers.
+
+        Args:
+            identifiers (list[int]): The identifiers of the tables to be fetched.
+
+        Returns:
+            list[PebbleTable]: The tables associated with the passed identifiers.
+        """
+
+        # Attempt to fetch the data associated with the passed identifier and return it as a PebbleTable object
+        return [
+            PebbleTableFactory.create(**self._get(identifier=identifier))
+            for identifier in identifiers
+        ]
+
+    def items(self) -> ItemsView[Any]:
+        """
+        Return the items of the PebbleDatabase's entries.
+
+        Returns:
+            ItemsView[Any]: The items of the PebbleDatabase's entries.
+        """
+
+        # Return the items of the PebbleDatabase's entries
         return self.entries.items()
 
     def keys(self) -> KeysView[Any]:
         """
-        Return the keys of the PebbleTable's entries.
+        Return the keys of the PebbleDatabase's entries.
 
         Returns:
-            KeysView[Any]: The keys of the PebbleTable's entries.
+            KeysView[Any]: The keys of the PebbleDatabase's entries.
         """
 
-        # Return the keys of the PebbleTable's entries
+        # Return the keys of the PebbleDatabase's entries
         return self.entries.keys()
 
     def remove(
@@ -592,19 +701,14 @@ class PebbleTable:
         timestamp: datetime = timestamp or datetime.now()
 
         # Set the result to True if the value associated with the identifier was removed successfully otherwise False
-        result: bool = bool(
-            self._data["values"].pop(
-                identifier,
-                False,
-            )
-        )
+        result: bool = bool(self._data["values"].pop(identifier, False))
 
         # Update the total count of the data dictionary instance variable
         self.total = self.total + 1
 
         # Check if the operation is not a bulk operation
         if not is_bulk_operation:
-            # Update the updated at datetime of the PebbleTable instance with the passed value
+            # Update the updated at datetime of the PebbleDatabase instance with the passed value
             self.updated_at = timestamp
 
         # Return the result to the caller
@@ -622,9 +726,6 @@ class PebbleTable:
 
         Returns:
             bool: True if the values associated with the identifiers were removed successfully otherwise False.
-
-        Raises:
-            ValueError: If the removal of any of the values associated with the passed identifiers failed.
         """
 
         # Get the current timestamp
@@ -659,6 +760,9 @@ class PebbleTable:
                 f"Failed to remove keys '{', '.join(errors)}' from the data dictionary. Please review your code for any mistakes before trying again."
             )
 
+        # Update the updated at datetime of the PebbleDatabase instance with the passed value
+        self.updated_at = timestamp
+
         # Return the result list to the caller
         return all(total_result)
 
@@ -675,15 +779,14 @@ class PebbleTable:
 
     def to_dict(self) -> dict[str, Any]:
         """
-        Return a dictionary representation of the PebbleTable instance.
+        Return a dictionary representation of the PebbleDatabase instance.
 
         Returns:
-            dict[str, Any]: A dictionary representation of the PebbleTable instance.
+            dict[str, Any]: A dictionary representation of the PebbleDatabase instance.
         """
 
-        # Return a dictionary representation of the PebbleTable instance
+        # Return a dictionary representation of the PebbleDatabase instance
         return {
-            "database": self.database,
             "entries": {
                 "total": self.total,
                 "values": self.entries,
@@ -717,20 +820,20 @@ class PebbleTable:
             bool: True if the value associated with the identifier was updated successfully otherwise False.
         """
 
+        # Get the current timestamp if the passed timestamp is None
+        timestamp: datetime = timestamp or datetime.now()
+
         # Check if the passed identifier is contained within the data dictionary instance variable
         if identifier not in self._data["values"]:
             # Raise a KeyError exception if the passed identifier was not found in the data dictionary instance variable
             raise KeyError(identifier)
 
-        # Get the current timestamp if the passed timestamp is None
-        timestamp: datetime = timestamp or datetime.now()
-
         # Update the value associated with the passed identifier with the passed entry
-        self._data["values"][identifier].update(entry)
+        self._data["values"].update(entry)
 
         # Check if the operation is not a bulk operation
         if not is_bulk_operation:
-            # Update the updated at datetime of the PebbleTable instance with the passed value
+            # Update the updated at datetime of the PebbleDatabase instance with the passed value
             self.updated_at = timestamp
 
         # Return True to the caller to indicate sucess
@@ -785,7 +888,7 @@ class PebbleTable:
             # Raise a sinlge KeyError exception with all missing keys
             raise KeyError(*errors)
 
-        # Update the updated at datetime of the PebbleTable instance with the passed value
+        # Update the updated at datetime of the PebbleDatabase instance with the passed value
         self.updated_at = timestamp
 
         # Return True if all operations in the result list were successfull
@@ -793,19 +896,19 @@ class PebbleTable:
 
     def values(self) -> ValuesView[Any]:
         """
-        Return the values of the PebbleTable's entries.
+        Return the values of the PebbleDatabase's entries.
 
         Returns:
-            ValuesView[Any]: The values of the PebbleTable's entries.
+            ValuesView[Any]: The values of the PebbleDatabase's entries.
         """
 
-        # Return the values of the PebbleTable's entries
+        # Return the values of the PebbleDatabase's entries
         return self.entries.values()
 
 
-class PebbleTableFactory:
+class PebbleDatabaseFactory:
     """
-    A factory class that creates new PebbleTable instances.
+    A factory class that creates new PebbleDatabase instances.
     """
 
     @classmethod
@@ -814,25 +917,23 @@ class PebbleTableFactory:
         data: dict[str, Any],
         name: str,
         created_at: Optional[datetime] = None,
-        database: str = "",
         identifier: Optional[str] = None,
         path: Optional[Path] = None,
         updated_at: Optional[datetime] = None,
-    ) -> PebbleTable:
+    ) -> PebbleDatabase:
         """
-        Create a new PebbleTable instance with the passed data dictionary, name string, and identifier string.
+        Create a new PebbleDatabase instance with the passed data dictionary, name string, and identifier string.
 
         Args:
-            created_at (Optional[datetime], optional): The created at datetime to be stored in the PebbleTable instance. Defaults to None.
-            database (str, optional): The database string to be stored in the PebbleTable instance. Defaults to "".
-            data (dict[str, Any]): The data dictionary to be stored in the PebbleTable instance.
-            identifier (Optional[str], optional): The identifier string to be stored in the PebbleTable instance. Defaults to None.
-            name (str): The name string to be stored in the PebbleTable instance.
-            path (Optional[Path], optional): The path to the PebbleTable instance. Defaults to None.
-            updated_at (Optional[datetime], optional): The updated at datetime to be stored in the PebbleTable instance. Defaults to None.
+            created_at (Optional[datetime], optional): The created at datetime to be stored in the PebbleDatabase instance. Defaults to None.
+            data (dict[str, Any]): The data dictionary to be stored in the PebbleDatabase instance.
+            identifier (Optional[str], optional): The identifier string to be stored in the PebbleDatabase instance. Defaults to None.
+            name (str): The name string to be stored in the PebbleDatabase instance.
+            path (Optional[Path], optional): The path to the PebbleDatabase instance. Defaults to None.
+            updated_at (Optional[datetime], optional): The updated at datetime to be stored in the PebbleDatabase instance. Defaults to None.
 
         Returns:
-            PebbleTable: The newly created PebbleTable instance.
+            PebbleDatabase: The newly created PebbleDatabase instance.
         """
 
         # Check if the passed identifier is None
@@ -845,10 +946,9 @@ class PebbleTableFactory:
             # Update the identifier with a newly generated UUID
             path = CWD
 
-        # Return the newly created PebbleTable instance to the caller
-        return PebbleTable(
+        # Return the newly created PebbleDatabase instance to the caller
+        return PebbleDatabase(
             created_at=created_at,
-            database=database,
             data=data,
             identifier=identifier,
             name=name,
@@ -860,38 +960,35 @@ class PebbleTableFactory:
     def create_default(
         cls,
         name: str,
-        database: str = "",
-    ) -> PebbleTable:
+    ) -> PebbleDatabase:
         """
-        Create a new PebbleTable instance with the passed name string.
+        Create a new PebbleDatabase instance with the passed name string.
 
         Args:
-            database (str, optional): The database string to be stored in the PebbleTable instance. Defaults to "".
-            name (str): The name string to be stored in the PebbleTable instance.
+            name (str): The name string to be stored in the PebbleDatabase instance.
 
         Returns:
-            PebbleTable: The newly created PebbleTable instance.
+            PebbleDatabase: The newly created PebbleDatabase instance.
         """
 
-        return PebbleTable(
+        return PebbleDatabase(
             created_at=datetime.now(),
-            database=database,
             data={},
             identifier=uuid.uuid4().hex,
             name=name,
             path=CWD,
-            updated_at=datetime.now(),
+            updated_at=None,
         )
 
 
-class PebbleTableBuilder:
+class PebbleDatabaseBuilder:
     """
-    A builder class for creating new PebbleTable instances.
+    A builder class for creating new PebbleDatabase instances.
     """
 
     def __init__(self) -> None:
         """
-        Initialize the PebbleTableBuilder instance with an empty configuration dictionary instance variable.
+        Initialize the PebbleDatabaseBuilder instance with an empty configuration dictionary instance variable.
 
         Returns:
             None
@@ -919,27 +1016,27 @@ class PebbleTableBuilder:
 
     def __eq__(
         self,
-        other: "PebbleTableBuilder",
+        other: "PebbleDatabaseBuilder",
     ) -> bool:
         """
-        Check if the passed other object is equal to the PebbleTableBuilder instance.
+        Check if the passed other object is equal to the PebbleDatabaseBuilder instance.
 
         Args:
-            other (PebbleTableBuilder): The other object to be checked.
+            other (PebbleDatabaseBuilder): The other object to be checked.
 
         Returns:
-            bool: True if the passed other object is equal to the PebbleTableBuilder instance, False otherwise.
+            bool: True if the passed other object is equal to the PebbleDatabaseBuilder instance, False otherwise.
         """
 
-        # Check if the passed other object is not a PebbleTableBuilder instance
+        # Check if the passed other object is not a PebbleDatabaseBuilder instance
         if not isinstance(
             other,
-            PebbleTable,
+            PebbleDatabase,
         ):
             # Return False as a comparison between non-identical classes is not supported
             return False
 
-        # Return True if the configuration dictionary instance variables of the two PebbleTableBuilder instance are equal otherwise False
+        # Return True if the configuration dictionary instance variables of the two PebbleDatabaseBuilder instance are equal otherwise False
         return self.configuration == other.configuration
 
     def __getitem__(
@@ -985,13 +1082,13 @@ class PebbleTableBuilder:
 
     def __repr__(self) -> str:
         """
-        Return a string representation of the PebbleTableBuilder instance.
+        Return a string representation of the PebbleDatabaseBuilder instance.
 
         Returns:
-            str: A string representation of the PebbleTableBuilder instance.
+            str: A string representation of the PebbleDatabaseBuilder instance.
         """
 
-        # Return a string representation of the PebbleTableBuilder instance
+        # Return a string representation of the PebbleDatabaseBuilder instance
         return f"<{self.__class__.__name__}(configuration={self.configuration})>"
 
     def __setitem__(
@@ -1036,16 +1133,16 @@ class PebbleTableBuilder:
         # Return a copy of the configuration dictionary instance variable to the caller
         return self._configuration.copy()
 
-    def build(self) -> PebbleTable:
+    def build(self) -> PebbleDatabase:
         """
-        Attempt to create and return the PebbleTable instance.
+        Attempt to create and return the PebbleDatabase instance.
 
         Returns:
-            PebbleTable: The newly created PebbleTable instance.
+            PebbleDatabase: The newly created PebbleDatabase instance.
         """
 
-        # Attempt to create and return the PebbleTable instance
-        return PebbleTableFactory.create(**self._configuration)
+        # Attempt to create and return the PebbleDatabase instance
+        return PebbleDatabaseFactory.create(**self._configuration)
 
     def with_created_at(
         self,
@@ -1055,7 +1152,7 @@ class PebbleTableBuilder:
         Update the configuration with the passed value.
 
         Args:
-            value (datetime): The value to be updated.
+            value (Optional[datetime], optional): The value to be updated. Defaults to None.
 
         Returns:
             Self: The builder.
@@ -1068,34 +1165,6 @@ class PebbleTableBuilder:
 
         # Update the configuration with the passed value
         self._configuration["created_at"] = value
-
-        # Return the builder
-        return self
-
-    def with_database(
-        self,
-        value: str,
-    ) -> Self:
-        """
-        Update the configuration with the passed value.
-
-        Args:
-            value (str): The value to be updated.
-
-        Returns:
-            Self: The builder.
-
-        Raises:
-            ValueError: If the passed value is an empty string.
-        """
-
-        # Check if the passed value is an empty string
-        if value == "":
-            # Raise a ValueError exception as an empty string is not a valid value
-            raise ValueError("The database string value cannot be empty.")
-
-        # Update the configuration with the passed value
-        self._configuration["database"] = value
 
         # Return the builder
         return self
@@ -1181,7 +1250,7 @@ class PebbleTableBuilder:
 
         # Check if the passed path Path object value is None
         if value is None:
-            # Store the global '_CWD' variable in the passed value
+            # Store the global 'CWD' variable in the passed value
             value = CWD
 
         # Check if a name has already been added to the configuration dictionary instance variable
@@ -1192,7 +1261,7 @@ class PebbleTableBuilder:
             )
             is not None
         ):
-            # Update the path with the passed value
+            # Update the configuration with the passed value
             value = Path(
                 value,
                 f"{self._configuration['name']}.json",
@@ -1203,3 +1272,46 @@ class PebbleTableBuilder:
 
         # Return the builder
         return self
+
+
+class PebbleDatabaseLoader:
+    """
+    A class that loads a PebbleDatabase instance from a file.
+    """
+
+    @classmethod
+    def load(
+        cls,
+        path: Path,
+    ) -> PebbleDatabase:
+        """
+        Load a PebbleDatabase instance from a file.
+
+        Args:
+            path (Path): The path to the file.
+
+        Returns:
+            PebbleDatabase: The loaded PebbleDatabase instance.
+        """
+
+        # Check if the path exists
+        if not path.exists():
+            # Raise a FileNotFoundError exception if the path does not exist
+            raise FileNotFoundError(path)
+
+        data: dict[str, Any] = DataConversionUtils.deserialize(
+            value=run_async(
+                function=read_file_if_not_exists,
+                path=path,
+            ),
+        )
+
+        # Return a new PebbleDatabase instance
+        return PebbleDatabase(
+            created_at=data.get("metadata", {}).get("created_at", None),
+            data=data.get("entries", {}),
+            identifier=data.get("identifier", None),
+            name=data.get("name", ""),
+            path=data.get("path", None),
+            updated_at=data.get("metadata", {}).get("updated_at", None),
+        )

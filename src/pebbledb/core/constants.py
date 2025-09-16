@@ -8,9 +8,12 @@ import os
 from pathlib import Path
 from typing import Final, Literal
 
+from core.utils import PebbleCommitService
+
 
 __all__: Final[list] = [
     "BOOLEAN",
+    "CUSTOM",
     "CWD",
     "DATE",
     "DATETIME",
@@ -22,6 +25,7 @@ __all__: Final[list] = [
     "MISSING",
     "NULL",
     "PATH",
+    "PEBBLE_COMMIT_SERVICE",
     "STRING",
     "TIME",
     "UUID",
@@ -30,6 +34,9 @@ __all__: Final[list] = [
 
 # Initialize the boolean field type as a module constant
 BOOLEAN: Final[Literal["boolean"]] = "boolean"
+
+# Initialize the custom field type as a module constant
+CUSTOM: Final[Literal["custom"]] = "custom"
 
 # Initialize the current working directory as module Path constant
 CWD: Final[Path] = Path(os.getcwd())
@@ -63,6 +70,9 @@ NULL: Final[Literal["null"]] = "null"
 
 # Initialize the path field type as a module constant
 PATH: Final[Literal["path"]] = "path"
+
+# Initialize the PebbleCommitService instance as a module constant
+PEBBLE_COMMIT_SERVICE: Final[PebbleCommitService] = PebbleCommitService()
 
 # Initialize the string field type as a module constant
 STRING: Final[Literal["string"]] = "string"

@@ -9,6 +9,7 @@ from typing import Any, Final, Optional, Type
 
 from core.constants import (
     BOOLEAN,
+    CUSTOM,
     DATE,
     DATETIME,
     DECIMAL,
@@ -28,6 +29,7 @@ from core.constants import (
 __all__: Final[list[str]] = [
     "PebbleField",
     "PebbleBooleanField",
+    "PebbleCustomField",
     "PebbleDateField",
     "PebbleDateTimeField",
     "PebbleDecimalField",

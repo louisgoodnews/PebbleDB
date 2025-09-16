@@ -4,7 +4,7 @@ Date: 2025-09-13
 """
 
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, Optional
 
 from core.files import read_file_if_not_exists, write_file_if_not_exists
 
@@ -27,11 +27,28 @@ class PebbleCommitService:
     A class that represents a commit service.
     """
 
-    _LOGGER: Final[Logger] = Logger.get_logger(name=__name__)
+    _shared_instance: Optional["PebbleCommitService"] = None
 
-    @classmethod
+    def __new__(cls) -> "PebbleCommitService":
+        """
+        Create a new instance of the PebbleCommitService class.
+
+        Returns:
+            PebbleCommitService: A new instance of the PebbleCommitService class.
+        """
+
+        if cls._shared_instance is None:
+            cls._shared_instance = super(PebbleCommitService, cls).__new__(cls)
+            cls._shared_instance.init()
+        return cls._shared_instance
+
+    def init(self) -> None:
+        """ """
+
+        self._logger: Final[Logger] = Logger.get_logger(name=self.__class__.__name__)
+
     def commit(
-        cls,
+        self,
         database_or_table: dict[str, Any],
     ) -> None:
         """
@@ -90,12 +107,12 @@ class PebbleCommitService:
             temporary.rename(database_or_table["path"])
 
             # Log the success
-            cls._LOGGER.info(
+            self._logger.info(
                 message=f"Database or table '{database_or_table['name']}' committed successfully",
             )
         except Exception as e:
             # Log the exception
-            cls._LOGGER.exception(
+            self._logger.exception(
                 exception=e,
                 message=f"Failed to commit database or table '{database_or_table['name']}' to file: {e}",
             )
