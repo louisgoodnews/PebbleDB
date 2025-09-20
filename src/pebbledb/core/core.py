@@ -33,7 +33,19 @@ class Pebble:
     TABLE: Optional[PebbleTable] = None
 
     @classmethod
-    def get_database(
+    def get_database_builder(cls) -> PebbleDatabaseBuilder:
+        """
+        Return a PebbleDatabaseBuilder instance.
+
+        Returns:
+            PebbleDatabaseBuilder: A PebbleDatabaseBuilder instance.
+        """
+
+        # Return a PebbleDatabaseBuilder instance
+        return PebbleDatabaseBuilder()
+
+    @classmethod
+    def get_database_or_default(
         cls,
         name_or_path: Union[Path, str],
     ) -> PebbleDatabase:
@@ -48,6 +60,13 @@ class Pebble:
         Returns:
             PebbleDatabase: A PebbleDatabase instance.
         """
+
+        # Check if a database already exists and if it matches the passed name_or_path
+        if cls.DATABASE is not None and (
+            cls.DATABASE.name == name_or_path or cls.DATABASE.path == name_or_path
+        ):
+            # Return the database object
+            return cls.DATABASE
 
         # Check if the passed name_or_path is a Path object
         if isinstance(
@@ -90,7 +109,19 @@ class Pebble:
             return result
 
     @classmethod
-    def get_table(
+    def get_table_builder(cls) -> PebbleTableBuilder:
+        """
+        Return a PebbleTableBuilder instance.
+
+        Returns:
+            PebbleTableBuilder: A PebbleTableBuilder instance.
+        """
+
+        # Return a PebbleTableBuilder instance
+        return PebbleTableBuilder()
+
+    @classmethod
+    def get_table_or_default(
         cls,
         name_or_path: Union[Path, str],
     ) -> PebbleTable:
@@ -105,6 +136,13 @@ class Pebble:
         Returns:
             PebbleTable: A PebbleTable instance.
         """
+
+        # Check if a table already exists and if it matches the passed name_or_path
+        if cls.TABLE is not None and (
+            cls.TABLE.name == name_or_path or cls.TABLE.path == name_or_path
+        ):
+            # Return the table object
+            return cls.TABLE
 
         # Check if the passed name_or_path is a Path object
         if isinstance(

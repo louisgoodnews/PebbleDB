@@ -8,7 +8,7 @@ import uuid
 from collections.abc import ItemsView, KeysView, ValuesView
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Final, Iterable, Iterator, Optional, Self
+from typing import Any, Final, Iterable, Iterator, Optional, Self, Union
 
 from core.constants import CWD, PEBBLE_COMMIT_SERVICE
 from core.files import read_file_if_not_exists
@@ -40,6 +40,7 @@ class PebbleDatabase:
         name: str,
         path: Path,
         created_at: Optional[datetime] = None,
+        metadata: Optional[dict[str, Any]] = None,
         updated_at: Optional[datetime] = None,
     ) -> None:
         """
@@ -49,6 +50,7 @@ class PebbleDatabase:
             created_at (Optional[datetime]): The created at datetime to be stored in the PebbleDatabase instance.
             data (dict[str, Any]): The data dictionary to be stored in the PebbleDatabase instance.
             identifier (str): The identifier string to be stored in the PebbleDatabase instance.
+            metadata (Optional[dict[str, Any]]): The metadata dictionary to be stored in the PebbleDatabase instance.
             name (str): The name string to be stored in the PebbleDatabase instance.
             path (Path): The path to the PebbleDatabase instance.
             updated_at (Optional[datetime]): The updated at datetime to be stored in the PebbleDatabase instance.
@@ -74,6 +76,14 @@ class PebbleDatabase:
         # Initialize the Logger instance
         self._logger: Logger = Logger(name=self.__class__.__name__)
 
+        # Check if the passed metadata is None
+        if metadata is None:
+            # Update the metadata with an empty dictionary
+            metadata = {}
+
+        # Store the passed metadata dictionary in a final instance variable
+        self._metadata: Final[dict[str, Any]] = metadata
+
         # Store the passed name string in a final instance variable
         self._name: Final[str] = name
 
@@ -98,7 +108,7 @@ class PebbleDatabase:
         """
 
         # Return True if the passed key is contained in the data dictionary instance variable
-        return key in self._data["values"]
+        return key in self._data["entries"]["values"]
 
     def __eq__(
         self,
@@ -145,7 +155,7 @@ class PebbleDatabase:
 
         # Return the value associated with the passed key.
         # Will raise a KeyError exception is the key does not exist
-        return self._data["values"][key]
+        return self._data["entries"]["values"][key]
 
     def __iter__(self) -> Iterable[Any]:
         """
@@ -156,7 +166,7 @@ class PebbleDatabase:
         """
 
         # Return an iterator over the copy of the data dictionary instance variable
-        return iter(self._data.copy())
+        return iter(self._data["entries"]["values"].copy())
 
     def __len__(self) -> int:
         """
@@ -167,7 +177,7 @@ class PebbleDatabase:
         """
 
         # Return the size of the data dictionary instance variable
-        return len(self._data)
+        return len(self._data["entries"]["values"])
 
     def __repr__(self) -> str:
         """
@@ -178,7 +188,7 @@ class PebbleDatabase:
         """
 
         # Return a string representation of this PebbleDatabase instance
-        return f"<{self.__class__.__name__}(entries={self.total}, identifier={self.identifier}, name={self.name}, path={self.path})>"
+        return f"<{self.__class__.__name__}(entries={self.total}, identifier={self.identifier}, metadata={self.metadata}, name={self.name}, path={self.path})>"
 
     def __setitem__(
         self,
@@ -197,7 +207,7 @@ class PebbleDatabase:
         """
 
         # Update the data dictionary instance variable with the passed value associated to the passed key
-        self._data["values"][key] = value
+        self._data["entries"]["values"][key] = value
 
     def __str__(self) -> str:
         """
@@ -231,13 +241,16 @@ class PebbleDatabase:
             dict[str, Any]: A copy of the dictionary to the caller.
         """
 
-        # Check if 'values' exists in the data dictionary instance variable
-        if "values" not in self._data:
-            # Initialize the 'total' count to
-            self._data["values"] = {}
+        # Check if 'entries' exists in the data dictionary instance variable
+        if "entries" not in self._data:
+            # Initialize the 'entries' dictionary to a dictionary with a 'total' key and a 'values' key
+            self._data["entries"] = {
+                "total": 0,
+                "values": {},
+            }
 
         # Return a copy of the dictionary to the caller
-        return self._data["values"].copy()
+        return self._data["entries"]["values"].copy()
 
     @property
     def identifier(self) -> str:
@@ -250,6 +263,36 @@ class PebbleDatabase:
 
         # Return the identifier of the PebbleDatabase instance to the caller
         return self._identifier
+
+    @property
+    def metadata(self) -> dict[str, Any]:
+        """
+        Return a copy of the metadata dictionary instance variable to the caller.
+
+        Returns:
+            dict[str, Any]: A copy of the metadata dictionary instance variable to the caller.
+        """
+
+        # Return a copy of the metadata dictionary instance variable to the caller
+        return self._metadata.copy()
+
+    @metadata.setter
+    def metadata(
+        self,
+        **kwargs,
+    ) -> None:
+        """
+        Update the metadata dictionary instance variable with the passed value.
+
+        Args:
+            **kwargs (dict[str, Any]): The key-value pairs to update the metadata with.
+
+        Returns:
+            None
+        """
+
+        # Update the metadata dictionary instance variable with the passed value
+        self._metadata.update(kwargs)
 
     @property
     def name(self) -> str:
@@ -284,13 +327,24 @@ class PebbleDatabase:
             int: The total count to the caller.
         """
 
+        # Check if 'entries' exists in the data dictionary instance variable
+        if "entries" not in self._data:
+            # Initialize the 'entries' dictionary to a dictionary with a 'total' key and a 'values' key
+            self._data["entries"] = {
+                "total": 0,
+                "values": {},
+            }
+
         # Check if 'total' exists in the data dictionary instance variable
-        if "total" not in self._data:
-            # Initialize the 'total' count to
-            self._data["total"] = 0
+        if "total" not in self._data["entries"]:
+            # Initialize the 'total' count to 0
+            self._data["entries"]["total"] = 0
+        else:
+            # Update the 'total' count to the size of the 'values' dictionary
+            self._data["entries"]["total"] = len(self._data["entries"]["values"])
 
         # Return the total count to the caller
-        return int(self._data["total"])
+        return self._data["entries"]["total"]
 
     @total.setter
     def total(
@@ -307,12 +361,21 @@ class PebbleDatabase:
             None
         """
 
+        # Check if 'entries' exists in the data dictionary instance variable
+        if "entries" not in self._data:
+            # Initialize the 'entries' dictionary to a dictionary with a 'total' key and a 'values' key
+            self._data["entries"] = {
+                "total": 0,
+                "values": {},
+            }
+
         # Check if 'total' exists in the data dictionary instance variable
-        if "total" not in self._data:
-            self._data["total"] = 0
+        if "total" not in self._data["entries"]:
+            # Initialize the 'total' count to 0
+            self._data["entries"]["total"] = 0
 
         # Update the total count with the passed value
-        self._data["total"] = value
+        self._data["entries"]["total"] = value
 
     @property
     def updated_at(self) -> datetime:
@@ -362,11 +425,11 @@ class PebbleDatabase:
         # Check if 'values' exists in the data dictionary instance variable
         if "values" not in self._data:
             # Initialize the 'values' dictionary to an empty dictionary
-            self._data["values"] = {}
+            self._data["entries"]["values"] = {}
 
         # Return the value associated with the passed key.
         # Will raise a KeyError exception is the key does not exist
-        return self._data["values"][identifier]
+        return self._data["entries"]["values"][identifier]
 
     def _get_in_bulk(
         self,
@@ -390,15 +453,15 @@ class PebbleDatabase:
         errors: list[KeyError] = []
 
         # Check if 'values' exists in the data dictionary instance variable
-        if "values" not in self._data:
+        if "values" not in self._data["entries"]:
             # Initialize the 'values' dictionary to an empty dictionary
-            self._data["values"] = {}
+            self._data["entries"]["values"] = {}
 
         # Iterate over the passed idenfifiers
         for identifier in identifiers:
             try:
                 # Attempt to append the value associated to the current identifier
-                result.append(self._data["values"][identifier])
+                result.append(self._data["entries"]["values"][identifier])
             except KeyError as e:
                 # Append the excepted KeyError exception to the errors list
                 errors.append(e)
@@ -427,6 +490,14 @@ class PebbleDatabase:
             int: The identifier of the inserted entry.
         """
 
+        # Check if 'entries' exists in the data dictionary instance variable
+        if "entries" not in self._data:
+            # Initialize the 'entries' dictionary to a dictionary with a 'total' key and a 'values' key
+            self._data["entries"] = {
+                "total": 0,
+                "values": {},
+            }
+
         # Get the current timestamp if the passed timestamp is None
         timestamp: datetime = timestamp or datetime.now()
 
@@ -437,12 +508,12 @@ class PebbleDatabase:
         entry["_added_at"] = timestamp.isoformat()
 
         # Check if 'values' exists in the data dictionary instance variable
-        if "values" not in self._data:
+        if "values" not in self._data["entries"]:
             # Initialize the 'values' dictionary to an empty dictionary
-            self._data["values"] = {}
+            self._data["entries"]["values"] = {}
 
         # Add the passed entry dictionary to the data dictionary instance variable
-        self._data["values"][identifier] = entry
+        self._data["entries"]["values"][identifier] = entry
 
         # Update the total count of the data dictionary instance variable
         self.total = self.total + 1
@@ -620,6 +691,28 @@ class PebbleDatabase:
         # Return True if the PebbleDatabase instance is empty otherwise False
         return self.total == 0
 
+    def get_metadata(
+        self,
+        key: str,
+        default: Optional[Any] = None,
+    ) -> Any:
+        """
+        Get the metadata associated with the passed key.
+
+        Args:
+            key (str): The key of the metadata to be fetched.
+            default (Optional[Any], optional): The default value to be returned if the key is not found. Defaults to None.
+
+        Returns:
+            Any: The metadata associated with the passed key.
+        """
+
+        # Return the metadata associated with the passed key
+        return self.metadata.get(
+            key,
+            default,
+        )
+
     def get_table(
         self,
         identifier: int,
@@ -632,10 +725,41 @@ class PebbleDatabase:
 
         Returns:
             PebbleTable: The table associated with the passed identifier.
+
+        Raises:
+            KeyError: If the table was not found.
         """
 
-        # Attempt to fetch the data associated with the passed identifier and return it as a PebbleTable object
-        return PebbleTableFactory.create(**self._get(identifier=identifier))
+        # TODO:
+        #   - implement loading the table file from disk if possible
+
+        # Attempt to fetch the data associated with the passed identifier
+        table: Optional[dict[str, Any]] = next(
+            filter(
+                lambda table: table["identifier"] == identifier,
+                self.entries.values(),
+            ),
+            None,
+        )
+
+        # Check if the table was found
+        if table is None:
+            # Raise a KeyError exception if the table was not found
+            raise KeyError(identifier)
+
+        # Return the table associated with the passed identifier
+        return (
+            PebbleTableBuilder()
+            .with_created_at(value=table.get("created_at", None))
+            .with_data(value=table.get("data", {}))
+            .with_database(value=self.name)
+            .with_identifier(value=table.get("identifier", None))
+            .with_metadata(value=table.get("metadata", {}))
+            .with_name(value=table.get("name", None))
+            .with_path(value=table.get("path", None))
+            .with_updated_at(value=table.get("updated_at", None))
+            .build()
+        )
 
     def get_tables(
         self,
@@ -649,12 +773,42 @@ class PebbleDatabase:
 
         Returns:
             list[PebbleTable]: The tables associated with the passed identifiers.
+
+        Raises:
+            KeyError: If the tables were not found.
         """
 
-        # Attempt to fetch the data associated with the passed identifier and return it as a PebbleTable object
+        # TODO:
+        #   - implement loading the table file from disk if possible
+
+        # Filter the entries to get the tables associated with the passed identifiers
+        tables: list[dict[str, Any]] = list(
+            filter(
+                lambda table: table["identifier"] in identifiers,
+                self.entries.values(),
+            )
+        )
+
+        # Check if the tables were found
+        if not tables:
+            # Raise a KeyError exception if the tables were not found
+            raise KeyError(identifiers)
+
+        # Return the tables associated with the passed identifiers
         return [
-            PebbleTableFactory.create(**self._get(identifier=identifier))
-            for identifier in identifiers
+            (
+                PebbleTableBuilder()
+                .with_created_at(value=table.get("created_at", None))
+                .with_data(value=table.get("data", {}))
+                .with_database(value=self.name)
+                .with_identifier(value=table.get("identifier", None))
+                .with_metadata(value=table.get("metadata", {}))
+                .with_name(value=table.get("name", None))
+                .with_path(value=table.get("path", None))
+                .with_updated_at(value=table.get("updated_at", None))
+                .build()
+            )
+            for table in tables
         ]
 
     def items(self) -> ItemsView[Any]:
@@ -701,7 +855,7 @@ class PebbleDatabase:
         timestamp: datetime = timestamp or datetime.now()
 
         # Set the result to True if the value associated with the identifier was removed successfully otherwise False
-        result: bool = bool(self._data["values"].pop(identifier, False))
+        result: bool = bool(self._data["entries"]["values"].pop(identifier, False))
 
         # Update the total count of the data dictionary instance variable
         self.total = self.total + 1
@@ -766,6 +920,25 @@ class PebbleDatabase:
         # Return the result list to the caller
         return all(total_result)
 
+    def set_metadata(
+        self,
+        key: str,
+        value: Any,
+    ) -> None:
+        """
+        Set the metadata associated with the passed key with the passed value.
+
+        Args:
+            key (str): The key of the metadata to be set.
+            value (Any): The value to be associated with the passed key.
+
+        Returns:
+            None
+        """
+
+        # Set the metadata associated with the passed key with the passed value
+        self.metadata[key] = value
+
     def size(self) -> int:
         """
         Return the total count to the caller.
@@ -787,17 +960,16 @@ class PebbleDatabase:
 
         # Return a dictionary representation of the PebbleDatabase instance
         return {
+            "created_at": self.created_at,
             "entries": {
                 "total": self.total,
                 "values": self.entries,
             },
             "identifier": self.identifier,
-            "metadata": {
-                "created_at": self.created_at,
-                "updated_at": self.updated_at,
-            },
+            "metadata": self.metadata,
             "name": self.name,
             "path": self.path,
+            "updated_at": self.updated_at,
         }
 
     def update(
@@ -824,12 +996,12 @@ class PebbleDatabase:
         timestamp: datetime = timestamp or datetime.now()
 
         # Check if the passed identifier is contained within the data dictionary instance variable
-        if identifier not in self._data["values"]:
+        if identifier not in self._data["entries"]["values"]:
             # Raise a KeyError exception if the passed identifier was not found in the data dictionary instance variable
             raise KeyError(identifier)
 
         # Update the value associated with the passed identifier with the passed entry
-        self._data["values"].update(entry)
+        self._data["entries"]["values"].update(entry)
 
         # Check if the operation is not a bulk operation
         if not is_bulk_operation:
@@ -918,6 +1090,7 @@ class PebbleDatabaseFactory:
         name: str,
         created_at: Optional[datetime] = None,
         identifier: Optional[str] = None,
+        metadata: Optional[dict[str, Any]] = None,
         path: Optional[Path] = None,
         updated_at: Optional[datetime] = None,
     ) -> PebbleDatabase:
@@ -928,6 +1101,7 @@ class PebbleDatabaseFactory:
             created_at (Optional[datetime], optional): The created at datetime to be stored in the PebbleDatabase instance. Defaults to None.
             data (dict[str, Any]): The data dictionary to be stored in the PebbleDatabase instance.
             identifier (Optional[str], optional): The identifier string to be stored in the PebbleDatabase instance. Defaults to None.
+            metadata (Optional[dict[str, Any]], optional): The metadata dictionary to be stored in the PebbleDatabase instance. Defaults to None.
             name (str): The name string to be stored in the PebbleDatabase instance.
             path (Optional[Path], optional): The path to the PebbleDatabase instance. Defaults to None.
             updated_at (Optional[datetime], optional): The updated at datetime to be stored in the PebbleDatabase instance. Defaults to None.
@@ -941,6 +1115,11 @@ class PebbleDatabaseFactory:
             # Update the identifier with a newly generated UUID
             identifier = uuid.uuid4().hex
 
+        # Check if the passed metadata is None
+        if metadata is None:
+            # Update the metadata with an empty dictionary
+            metadata = {}
+
         # Check if the passed identifier is None
         if path is None:
             # Update the identifier with a newly generated UUID
@@ -951,6 +1130,7 @@ class PebbleDatabaseFactory:
             created_at=created_at,
             data=data,
             identifier=identifier,
+            metadata=metadata,
             name=name,
             path=path,
             updated_at=updated_at,
@@ -975,6 +1155,7 @@ class PebbleDatabaseFactory:
             created_at=datetime.now(),
             data={},
             identifier=uuid.uuid4().hex,
+            metadata={},
             name=name,
             path=CWD,
             updated_at=None,
@@ -1183,8 +1364,78 @@ class PebbleDatabaseBuilder:
             Self: The builder.
         """
 
+        # Check if the passed value is an empty dictionary
+        if not value:
+            # Update the passed value with an empty dictionary
+            value = {
+                "entries": {
+                    "total": 0,
+                    "values": {},
+                },
+            }
+
         # Update the configuration with the passed value
         self._configuration["data"] = value
+
+        # Update the 'total' keyword with the total number of entries
+        self._configuration["data"]["entries"]["total"] = len(
+            self._configuration["data"]["entries"]["values"]
+        )
+
+        # Return the builder
+        return self
+
+    def with_entries(
+        self,
+        values: Union[dict[str, Any], list[dict[str, Any]]],
+    ) -> Self:
+        """
+        Update the configuration with the passed value.
+
+        Args:
+            values (Union[dict[str, Any], list[dict[str, Any]]]):
+                The value to be added to the 'entries' key in the configuration.
+
+        Returns:
+            Self: The builder.
+        """
+
+        # Check if the 'data' key is not in the configuration dictionary
+        if "data" not in self._configuration:
+            # Update the 'data' key in the configuration with an empty dictionary
+            self._configuration["data"] = {}
+
+        # Check if the 'entries' key is not in the configuration dictionary
+        if "entries" not in self._configuration["data"]:
+            # Update the 'entries' key in the configuration with an empty dictionary
+            self._configuration["data"]["entries"] = {
+                "values": {},
+                "total": 0,
+            }
+
+        # Check if the passed value is a dictionary
+        if isinstance(
+            values,
+            dict,
+        ):
+            # Convert the passed value into a list
+            values = list(values)
+
+        # Iterate over the values
+        for (
+            index,
+            value,
+        ) in enumerate(
+            iterable=values,
+            start=len(self._configuration["data"]["entries"]["values"]),
+        ):
+            # Update the 'entries' key in the configuration with the passed value
+            self._configuration["data"]["entries"]["values"][index] = value
+
+        # Update the 'total' keyword with the total number of entries
+        self._configuration["data"]["entries"]["total"] = len(
+            self._configuration["data"]["entries"]["values"]
+        )
 
         # Return the builder
         return self
@@ -1210,6 +1461,31 @@ class PebbleDatabaseBuilder:
 
         # Update the configuration with the passed value
         self._configuration["identifier"] = value
+
+        # Return the builder
+        return self
+
+    def with_metadata(
+        self,
+        value: Optional[dict[str, Any]] = None,
+    ) -> Self:
+        """
+        Update the configuration with the passed value.
+
+        Args:
+            value (Optional[dict[str, Any]], optional): The value to be updated. Defaults to None.
+
+        Returns:
+            Self: The builder.
+        """
+
+        # Check if the passed metadata dictionary value is None
+        if value is None:
+            # Update the passed value with an empty dictionary
+            value = {}
+
+        # Update the configuration with the passed value
+        self._configuration["metadata"] = value
 
         # Return the builder
         return self
@@ -1273,6 +1549,26 @@ class PebbleDatabaseBuilder:
         # Return the builder
         return self
 
+    def with_updated_at(
+        self,
+        value: datetime,
+    ) -> Self:
+        """
+        Update the configuration with the passed value.
+
+        Args:
+            value (datetime): The value to be updated.
+
+        Returns:
+            Self: The builder.
+        """
+
+        # Update the 'updated_at' key in the configuration with the passed value
+        self._configuration["updated_at"] = value
+
+        # Return the builder
+        return self
+
 
 class PebbleDatabaseLoader:
     """
@@ -1308,10 +1604,11 @@ class PebbleDatabaseLoader:
 
         # Return a new PebbleDatabase instance
         return PebbleDatabase(
-            created_at=data.get("metadata", {}).get("created_at", None),
-            data=data.get("entries", {}),
+            created_at=data.get("created_at", None),
+            data={"entries": data.get("entries", {})},
             identifier=data.get("identifier", None),
+            metadata=data.get("metadata", {}),
             name=data.get("name", ""),
             path=data.get("path", None),
-            updated_at=data.get("metadata", {}).get("updated_at", None),
+            updated_at=data.get("updated_at", None),
         )
