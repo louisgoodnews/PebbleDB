@@ -704,7 +704,7 @@ class PebbleUniqueConstraint(PebbleConstraint):
         """
 
         # Initialize an empty set to store the field values
-        seen: set[Any] = set()
+        seen: Set[Any] = set()
 
         # Iterate over the entries
         for entry in entries:
