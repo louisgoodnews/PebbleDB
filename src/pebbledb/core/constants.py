@@ -20,6 +20,8 @@ __all__: Final[list] = [
     "DECIMAL",
     "DICTIONARY",
     "FLOAT",
+    "FROZENDICT",
+    "FROZENSET",
     "INTEGER",
     "LIST",
     "MISSING",
@@ -28,6 +30,7 @@ __all__: Final[list] = [
     "PEBBLE_COMMIT_SERVICE",
     "STRING",
     "TIME",
+    "TUPLE",
     "UUID",
 ]
 
@@ -56,6 +59,12 @@ DICTIONARY: Final[Literal["dictionary"]] = "dictionary"
 # Initialize the float field type as a module constant
 FLOAT: Final[Literal["float"]] = "float"
 
+# Initialize the frozendict field type as a module constant
+FROZENDICT: Final[Literal["frozendict"]] = "frozendict"
+
+# Initialize the frozenset field type as a module constant
+FROZENSET: Final[Literal["frozenset"]] = "frozenset"
+
 # Initialize the integer field type as a module constant
 INTEGER: Final[Literal["integer"]] = "integer"
 
@@ -79,6 +88,9 @@ STRING: Final[Literal["string"]] = "string"
 
 # Initialize the time field type as a module constant
 TIME: Final[Literal["time"]] = "time"
+
+# Initialize the tuple field type as a module constant
+TUPLE: Final[Literal["tuple"]] = "tuple"
 
 # Initialize the UUID field type as a module constant
 UUID: Final[Literal["uuid"]] = "uuid"

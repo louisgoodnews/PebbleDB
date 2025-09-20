@@ -43,8 +43,14 @@ class PebbleCommitService:
         return cls._shared_instance
 
     def init(self) -> None:
-        """ """
+        """
+        Initialize the PebbleCommitService instance.
 
+        Returns:
+            None
+        """
+
+        # Initialize this instance's Logger object
         self._logger: Final[Logger] = Logger.get_logger(name=self.__class__.__name__)
 
     def commit(

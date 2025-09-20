@@ -3,7 +3,7 @@
 	url = https://github.com/louisgoodnews/Logger.git
 [submodule "thirdparty/DataUtils"]
 	path = thirdparty/DataUtils
-	url = https://github.com/louisgoodnews/DataUtils
+	url = https://github.com/louisgoodnews/DataUtils.git
 [submodule "thirdparty/TaskScheduler"]
 	path = thirdparty/TaskScheduler
-	url = https://github.com/louisgoodnews/TaskScheduler
+	url = https://github.com/louisgoodnews/TaskScheduler.git

@@ -183,3 +183,51 @@ class Pebble:
 
             # Return the table instance
             return result
+
+    @classmethod
+    def load_database(
+        cls,
+        path: Union[Path, str],
+    ) -> PebbleDatabase:
+        """
+        Load a database instance from a file.
+
+        Args:
+            path (Union[Path, str]): The path to the database file.
+
+        Returns:
+            PebbleDatabase: A PebbleDatabase instance.
+        """
+
+        # Load the database instance
+        result: PebbleDatabase = PebbleDatabaseLoader.load(path=path)
+
+        # Update the class variable
+        cls.DATABASE = result
+
+        # Return the database instance
+        return result
+
+    @classmethod
+    def load_table(
+        cls,
+        path: Union[Path, str],
+    ) -> PebbleTable:
+        """
+        Load a table instance from a file.
+
+        Args:
+            path (Union[Path, str]): The path to the table file.
+
+        Returns:
+            PebbleTable: A PebbleTable instance.
+        """
+
+        # Load the table instance
+        result: PebbleTable = PebbleTableLoader.load(path=path)
+
+        # Update the class variable
+        cls.TABLE = result
+
+        # Return the table instance
+        return result

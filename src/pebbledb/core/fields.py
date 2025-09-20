@@ -3,18 +3,26 @@ Author: Louis Goodnews
 Date: 2025-09-13
 """
 
+import frozendict
 import json
 
-from typing import Any, Final, Optional, Type
+from datetime import date, datetime, time
+from decimal import Decimal
+from pathlib import Path
+from typing import Any, Final, Literal, Optional, Type
+from uuid import UUID
 
 from core.constants import (
     BOOLEAN,
     CUSTOM,
+    CWD,
     DATE,
     DATETIME,
     DECIMAL,
     DICTIONARY,
     FLOAT,
+    FROZENDICT,
+    FROZENSET,
     INTEGER,
     LIST,
     MISSING,
@@ -22,8 +30,11 @@ from core.constants import (
     PATH,
     STRING,
     TIME,
+    TUPLE,
     UUID,
 )
+
+from datautils import DataConversionUtils
 
 
 __all__: Final[list[str]] = [
@@ -35,12 +46,15 @@ __all__: Final[list[str]] = [
     "PebbleDecimalField",
     "PebbleDictionaryField",
     "PebbleFloatField",
+    "PebbleFrozendictField",
+    "PebbleFrozensetField",
     "PebbleIntegerField",
     "PebbleListField",
     "PebbleNullField",
     "PebblePathField",
     "PebbleStringField",
     "PebbleTimeField",
+    "PebbleTupleField",
     "PebbleUUIDField",
     "PebbleFieldFactory",
     "PebbleFieldBuilder",
@@ -51,6 +65,8 @@ class PebbleField:
     """
     A base class for all Pebble fields.
     """
+
+    name: Final[str]
 
     def __init__(
         self,
@@ -100,9 +116,7 @@ class PebbleField:
                 field_type,
             ):
                 # Raise a TypeError if the actual type does not match the annotated one
-                raise TypeError(
-                    f"Field {field} expected {field_type}, got {type(value)}"
-                )
+                raise TypeError(f"Field {field} expected {field_type}, got {type(value)}")
 
             # Set the current key value pair as attributes of this instance
             setattr(
@@ -131,7 +145,10 @@ class PebbleField:
             field_type,
         ) in cls.__annotations__.items():
 
-            def getter(self, key: str = field) -> Any:
+            def getter(
+                self,
+                key: str = field,
+            ) -> Any:
                 """
                 Return the value associated with the passed key (i.e. the field).
 
@@ -311,3 +328,270 @@ class PebbleField:
 
         # Return a copy of the dictionary representation of this instance
         return self.__dict__.copy()
+
+    def value_from_json(
+        self,
+        value: str,
+    ) -> Any:
+        """
+        Return a value from a JSON representation.
+
+        Args:
+            value (str): The JSON representation to convert to a value.
+
+        Returns:
+            Any: A value from a JSON representation.
+        """
+
+        # Raise a NotImplementedError exception
+        raise NotImplementedError
+
+    def value_to_json(
+        self,
+        value: Any,
+    ) -> str:
+        """
+        Return a JSON representation of the value.
+
+        Args:
+            value (Any): The value to convert to a JSON representation.
+
+        Returns:
+            str: A JSON representation of the value.
+        """
+
+        # Raise a NotImplementedError exception
+        raise NotImplementedError
+
+
+class PebbleBooleanField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["boolean"]] = BOOLEAN
+
+    # Define the default value for this field
+    default: bool = False
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleCustomField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["custom"]] = CUSTOM
+
+    # Define the default value for this field
+    default: Any = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleDateField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["date"]] = DATE
+
+    # Define the default value for this field
+    default: date = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleDateTimeField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["datetime"]] = DATETIME
+
+    # Define the default value for this field
+    default: datetime = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleDecimalField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["decimal"]] = DECIMAL
+
+    # Define the default value for this field
+    default: Decimal = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleDictionaryField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["dictionary"]] = DICTIONARY
+
+    # Define the default value for this field
+    default: dict = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleFloatField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["float"]] = FLOAT
+
+    # Define the default value for this field
+    default: float = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleFrozendictField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["frozendict"]] = FROZENDICT
+
+    # Define the default value for this field
+    default: frozendict = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleFrozensetField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["frozenset"]] = FROZENSET
+
+    # Define the default value for this field
+    default: frozenset = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleIntegerField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["integer"]] = INTEGER
+
+    # Define the default value for this field
+    default: int = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleListField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["list"]] = LIST
+
+    # Define the default value for this field
+    default: list = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleNullField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["null"]] = NULL
+
+    # Define the default value for this field
+    default: None = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebblePathField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["path"]] = PATH
+
+    # Define the default value for this field
+    default: Path = CWD
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleStringField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["string"]] = STRING
+
+    # Define the default value for this field
+    default: str = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleTimeField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["time"]] = TIME
+
+    # Define the default value for this field
+    default: time = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleTupleField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["tuple"]] = TUPLE
+
+    # Define the default value for this field
+    default: tuple = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleUUIDField(PebbleField):
+    """ """
+
+    # Define the field type as a final literal (i.e. the field type cannot be changed)
+    _field_type: Final[Literal["uuid"]] = UUID
+
+    # Define the default value for this field
+    default: UUID = None
+
+    # Define if this field can be null
+    nullable: bool = True
+
+
+class PebbleFieldFactory:
+    """ """
+
+    pass
+
+
+class PebbleFieldBuilder:
+    """ """
+
+    pass
