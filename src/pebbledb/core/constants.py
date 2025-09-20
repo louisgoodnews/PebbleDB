@@ -28,6 +28,8 @@ __all__: Final[list] = [
     "NULL",
     "PATH",
     "PEBBLE_COMMIT_SERVICE",
+    "REGEX",
+    "SET",
     "STRING",
     "TIME",
     "TUPLE",
@@ -82,6 +84,12 @@ PATH: Final[Literal["path"]] = "path"
 
 # Initialize the PebbleCommitService instance as a module constant
 PEBBLE_COMMIT_SERVICE: Final[PebbleCommitService] = PebbleCommitService()
+
+# Initialize the regex field type as a module constant
+REGEX: Final[Literal["regex"]] = "regex"
+
+# Initialize the set field type as a module constant
+SET: Final[Literal["set"]] = "set"
 
 # Initialize the string field type as a module constant
 STRING: Final[Literal["string"]] = "string"

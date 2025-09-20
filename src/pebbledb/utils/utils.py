@@ -7,10 +7,27 @@ import asyncio
 import inspect
 import threading
 
-from typing import Any, Callable, Coroutine, Final, Optional
+from typing import (
+    get_args,
+    get_origin,
+    Any,
+    Callable,
+    Coroutine,
+    Dict,
+    Final,
+    List,
+    Literal,
+    Optional,
+    Set,
+    Tuple,
+    Type,
+    Union,
+)
 
 
 __all__: Final[list[str]] = [
+    "analyze_property",
+    "analyze_typing",
     "merge_dicts",
     "NotACoroutineFunctionError",
     "run_async",
@@ -69,6 +86,119 @@ def _loop() -> asyncio.AbstractEventLoop:
 
     # Return the asyncio.AbstractEventLoop object
     return _LOOP
+
+
+def analyze_property(property_: Any) -> Type[Any]:
+    """
+    Analyze the passed property and return the result.
+
+    Args:
+        property_ (Any): The property to analyze.
+
+    Returns:
+        Type[Any]: The result of the analysis.
+    """
+
+    # Check if the passed property is a property
+    if not isinstance(
+        property_,
+        property,
+    ):
+        # Return the type of the property
+        return property_.__class__
+
+    # Return the return type of the property
+    return property_.fget.__annotations__.get(
+        "return",
+        Any,
+    )
+
+
+def analyze_typing(
+    typing: Type[Any],
+) -> Union[list[Any], Type[Any]]:
+    """
+    Analyze the passed typing and return the result.
+
+    Args:
+        typing (Type[Any]): The typing to analyze.
+
+    Returns:
+        Union[list[Any], Type[Any]]: The result of the analysis.
+    """
+
+    # Initialize the result to None
+    result: Optional[Union[list[Any], Type[Any]]] = None
+
+    # Check if the typing is Any
+    if typing is Any:
+
+        class AnyType:
+            """
+            Dummy class that passes isinstance checks for Any.
+            """
+
+            def __instancecheck__(
+                self,
+                instance,
+            ) -> bool:
+                """
+                Check if the passed instance is an instance of the AnyType class.
+
+                Args:
+                    instance (Any): The instance to check.
+
+                Returns:
+                    bool: True if the instance is an instance of the AnyType class, False otherwise.
+                """
+
+                # Return True
+                return True
+
+        # Return the AnyType class
+        return AnyType
+
+    try:
+        # Attempt to get the origin of the typing
+        origin: Type[Any] = get_origin(typing)
+    except Exception:
+        # Return the typing to the caller
+        return typing
+
+    # Check if the origin of the typing is Final, Literal or Optional
+    if origin in {
+        Dict,
+        Final,
+        List,
+        Literal,
+        Optional,
+        Set,
+        Tuple,
+        Union,
+    }:
+        # Get the args of the typing
+        args: tuple[Any] = get_args(typing)
+
+        # Initialize the result list to an empty list
+        result = []
+
+        # Iterate over the args
+        for arg in args:
+            # Append the current argument to the result list
+            result.append(analyze_typing(typing=arg))
+
+    # Check, if the result is None:
+    if result is None:
+        # Return the typing to the caller
+        return typing
+
+    # Check, if the result list contains only one element:
+    if len(result) == 1:
+        # Return the single element of the result list
+        return result[0]
+
+    # Return the result list to the caller
+    return result
 
 
 def merge_dicts(
