@@ -40,6 +40,7 @@ class PebbleTable:
         path: Path,
         created_at: Optional[datetime] = None,
         database: str = "",
+        definition: Optional[dict[str, Any]] = None,
         metadata: Optional[dict[str, Any]] = None,
         updated_at: Optional[datetime] = None,
     ) -> None:
@@ -51,6 +52,7 @@ class PebbleTable:
             database (str): The database string to be stored in the PebbleTable instance.
             data (dict[str, Any]): The data dictionary to be stored in the PebbleTable instance.
             identifier (str): The identifier string to be stored in the PebbleTable instance.
+            definition (Optional[dict[str, Any]]): The definition dictionary to be stored in the PebbleTable instance.
             metadata (Optional[dict[str, Any]]): The metadata dictionary to be stored in the PebbleTable instance.
             name (str): The name string to be stored in the PebbleTable instance.
             path (Path): The path to the PebbleTable instance.
@@ -73,6 +75,14 @@ class PebbleTable:
 
         # Store the passed data dictionary in a final instance variable
         self._data: Final[dict[str, Any]] = data
+
+        # Check if the passed definition value is None
+        if definition is None:
+            # Update the definition value with an empty dictionary
+            definition = {}
+
+        # Store the passed definition dictionary in a final instance variable
+        self._definition: Final[dict[str, Any]] = definition
 
         # Storet the passed identifier string in a final instance variable
         self._identifier: Final[str] = identifier
@@ -192,7 +202,7 @@ class PebbleTable:
         """
 
         # Return a string representation of this PebbleTable instance
-        return f"<{self.__class__.__name__}(created_at={self.created_at.isoformat()}, database={self.database}, entries={self.total}, identifier={self.identifier}, metadata={self._metadata}, name={self.name}, path={self.path}, updated_at={self.updated_at.isoformat()})>"
+        return f"<{self.__class__.__name__}(created_at={self.created_at.isoformat()}, database={self.database}, definition={self.definition}, entries={self.total}, identifier={self.identifier}, metadata={self._metadata}, name={self.name}, path={self.path}, updated_at={self.updated_at.isoformat()})>"
 
     def __setitem__(
         self,
@@ -263,6 +273,14 @@ class PebbleTable:
             None
         """
 
+        # Check, if the passed value is an instance of str
+        if not isinstance(
+            value,
+            str,
+        ):
+            # Raise a TypeError if the passed value is not an instance of str
+            raise TypeError(f"Expected value to be an instance of str, but got {type(value)}")
+
         # Check if the passed value is an empty string
         if value == "":
             # Return None as an empty string is not a valid value
@@ -270,6 +288,18 @@ class PebbleTable:
 
         # Update the database of the PebbleTable instance with the passed value
         self._database = value
+
+    @property
+    def definition(self) -> dict[str, Any]:
+        """
+        Return the definition of the PebbleTable instance to the caller.
+
+        Returns:
+            dict[str, Any]: The definition of the PebbleTable instance to the caller.
+        """
+
+        # Return the definition of the PebbleTable instance to the caller
+        return dict(self._definition)
 
     @property
     def entries(self) -> dict[str, Any]:
@@ -313,7 +343,7 @@ class PebbleTable:
         """
 
         # Return a copy of the metadata of the PebbleTable instance to the caller
-        return self._metadata.copy()
+        return dict(self._metadata)
 
     @metadata.setter
     def metadata(
@@ -356,6 +386,32 @@ class PebbleTable:
 
         # Return the path of the PebbleTable instance to the caller
         return self._path
+
+    @path.setter
+    def path(
+        self,
+        value: Path,
+    ) -> None:
+        """
+        Update the path of the PebbleTable instance with the passed value.
+
+        Args:
+            value (Path): The path to be updated.
+
+        Returns:
+            None
+        """
+
+        # Check, if the passed value is an instance of Path
+        if not isinstance(
+            value,
+            Path,
+        ):
+            # Raise a TypeError if the passed value is not an instance of Path
+            raise TypeError(f"Expected value to be an instance of Path, but got {type(value)}")
+
+        # Update the path of the PebbleTable instance with the passed value
+        self._path = value
 
     @property
     def total(self) -> int:
@@ -400,6 +456,14 @@ class PebbleTable:
             None
         """
 
+        # Check, if the passed value is an instance of int
+        if not isinstance(
+            value,
+            int,
+        ):
+            # Raise a TypeError if the passed value is not an instance of int
+            raise TypeError(f"Expected value to be an instance of int, but got {type(value)}")
+
         # Check if 'entries' exists in the data dictionary instance variable
         if "entries" not in self._data:
             # Initialize the 'entries' dictionary to a dictionary with a 'total' key and a 'values' key
@@ -442,6 +506,14 @@ class PebbleTable:
         Returns:
             None
         """
+
+        # Check, if the passed value is an instance of datetime
+        if not isinstance(
+            value,
+            datetime,
+        ):
+            # Raise a TypeError if the passed value is not an instance of datetime
+            raise TypeError(f"Expected value to be an instance of datetime, but got {type(value)}")
 
         # Update the updated at datetime of the PebbleTable instance with the passed value
         self._updated_at = value
@@ -811,6 +883,7 @@ class PebbleTable:
         return {
             "created_at": self.created_at,
             "database": self.database,
+            "definition": self.definition,
             "entries": {
                 "total": self.total,
                 "values": self.entries,
@@ -940,6 +1013,7 @@ class PebbleTableFactory:
         name: str,
         created_at: Optional[datetime] = None,
         database: str = "",
+        definition: Optional[dict[str, Any]] = None,
         identifier: Optional[str] = None,
         metadata: Optional[dict[str, Any]] = None,
         path: Optional[Path] = None,
@@ -952,6 +1026,7 @@ class PebbleTableFactory:
             created_at (Optional[datetime], optional): The created at datetime to be stored in the PebbleTable instance. Defaults to None.
             database (str, optional): The database string to be stored in the PebbleTable instance. Defaults to "".
             data (dict[str, Any]): The data dictionary to be stored in the PebbleTable instance.
+            definition (Optional[dict[str, Any]], optional): The definition dictionary to be stored in the PebbleTable instance. Defaults to None.
             identifier (Optional[str], optional): The identifier string to be stored in the PebbleTable instance. Defaults to None.
             metadata (Optional[dict[str, Any]], optional): The metadata dictionary to be stored in the PebbleTable instance. Defaults to None.
             name (str): The name string to be stored in the PebbleTable instance.
@@ -961,6 +1036,11 @@ class PebbleTableFactory:
         Returns:
             PebbleTable: The newly created PebbleTable instance.
         """
+
+        # Check if the passed definition is None
+        if definition is None:
+            # Update the definition with an empty dictionary
+            definition = {}
 
         # Check if the passed identifier is None
         if identifier is None:
@@ -982,6 +1062,7 @@ class PebbleTableFactory:
             created_at=created_at,
             database=database,
             data=data,
+            definition=definition,
             identifier=identifier,
             metadata=metadata,
             name=name,
@@ -1008,8 +1089,9 @@ class PebbleTableFactory:
 
         return PebbleTable(
             created_at=datetime.now(),
-            database=database,
             data={},
+            database=database,
+            definition={},
             identifier=uuid.uuid4().hex,
             metadata={},
             name=name,
@@ -1270,6 +1352,26 @@ class PebbleTableBuilder:
         # Return the builder
         return self
 
+    def with_definition(
+        self,
+        value: dict[str, Any],
+    ) -> Self:
+        """
+        Update the configuration with the passed value.
+
+        Args:
+            value (dict[str, Any]): The value to be updated.
+
+        Returns:
+            Self: The builder.
+        """
+
+        # Update the 'definition' key in the configuration with the passed value
+        self._configuration["definition"] = value
+
+        # Return the builder
+        return self
+
     def with_entries(
         self,
         values: Union[dict[str, Any], list[dict[str, Any]]],
@@ -1350,12 +1452,32 @@ class PebbleTableBuilder:
         # Return the builder
         return self
 
+    def with_kwargs(
+        self,
+        **kwargs,
+    ) -> Self:
+        """
+        Update the configuration with the passed key value pairs.
+
+        Args:
+            **kwargs: The keyword arguments to be updated.
+
+        Returns:
+            Self: The builder.
+        """
+
+        # Update the configuration with the passed value
+        self._configuration.update(kwargs)
+
+        # Return the builder
+        return self
+
     def with_metadata(
         self,
         **kwargs,
     ) -> Self:
         """
-        Update the configuration with the passed value.
+        Update the configuration with the passed key value pairs.
 
         Args:
             **kwargs: The keyword arguments to be updated.
@@ -1480,21 +1602,30 @@ class PebbleTableLoader:
             # Raise a FileNotFoundError exception if the path does not exist
             raise FileNotFoundError(path)
 
-        data: dict[str, Any] = DataConversionUtils.deserialize(
-            value=run_async(
-                function=read_file_if_not_exists,
-                path=path,
-            ),
+        # Read the file's content
+        content: str = run_async(
+            function=read_file_if_not_exists,
+            path=path,
+        )
+
+        # Deserialize the file content
+        data: dict[str, Any] = DataConversionUtils.deserialize(value=content)
+
+        # Initialize a new builder instance
+        builder: PebbleTableBuilder = PebbleTableBuilder()
+
+        # Configure the builder instance
+        (
+            builder.with_created_at(value=data.get("created_at", None))
+            .with_data(value=data.get("data", {}))
+            .with_database(value=data.get("database", ""))
+            .with_definition(value=data.get("definition", {}))
+            .with_identifier(value=data.get("identifier", None))
+            .with_metadata(**data.get("metadata", {}))
+            .with_name(value=data.get("name", ""))
+            .with_path(value=path)
+            .with_updated_at(value=data.get("updated_at", None))
         )
 
         # Return a new PebbleTable instance
-        return PebbleTable(
-            created_at=data.get("created_at", None),
-            data={"entries": data.get("entries", {})},
-            database=data.get("database", ""),
-            identifier=data.get("identifier", None),
-            metadata=data.get("metadata", {}),
-            name=data.get("name", ""),
-            path=data.get("path", None),
-            updated_at=data.get("updated_at", None),
-        )
+        return builder.build()
